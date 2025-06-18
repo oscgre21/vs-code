@@ -1,40 +1,40 @@
-# Usar imagen base con Node.js incluido
-FROM node:20-bullseye
+FROM lscr.io/linuxserver/code-server:latest
 
-# Instalar dependencias para code-server
+# Cambiar a root para instalar paquetes
+USER root
+
+# Actualizar sistema e instalar dependencias básicas
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
     git \
-    sudo \
+    build-essential \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario
-RUN useradd -m -u 1000 -G sudo abc \
-    && echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Instalar Node.js usando el método oficial
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x $(lsb_release -cs) main" > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs
 
-# Instalar code-server
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+# Verificar que Node.js y npm estén instalados
+RUN node --version && npm --version && git --version
 
-# Instalar herramientas Node.js
+# Instalar herramientas globales de Node.js
 RUN npm install -g \
     yarn \
     typescript \
     nodemon \
     pm2 \
     create-react-app \
-    @angular/cli
+    @angular/cli \
+    @vue/cli
 
-# Configurar usuario y directorios
+# Configurar git
+RUN git config --system init.defaultBranch main
+
+# Volver al usuario original (abc que ya existe)
 USER abc
-WORKDIR /home/abc
-
-# Crear directorios necesarios
-RUN mkdir -p /home/abc/.local/share/code-server \
-    && mkdir -p /home/abc/workspace
-
-# Exponer puerto
-EXPOSE 8443
-
-# Comando por defecto
-CMD ["code-server", "--bind-addr", "0.0.0.0:8443", "--auth", "password", "/home/abc/workspace"]
