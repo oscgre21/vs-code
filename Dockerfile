@@ -1,68 +1,42 @@
 FROM lscr.io/linuxserver/code-server:latest
 
+# Cambiar a root para instalar paquetes
 USER root
 
-# Variables de entorno
-ENV NODE_VERSION=20
-ENV NVM_DIR=/usr/local/nvm
-
-# Instalar dependencias del sistema
+# Actualizar sistema e instalar dependencias básicas
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
     git \
     build-essential \
-    python3 \
-    python3-pip \
-    vim \
-    nano \
-    htop \
-    tree \
-    jq \
-    zip \
-    unzip \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar NVM y Node.js
-RUN mkdir -p $NVM_DIR \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash \
-    && . $NVM_DIR/nvm.sh \
-    && nvm install $NODE_VERSION \
-    && nvm use $NODE_VERSION \
-    && nvm alias default $NODE_VERSION
+# Instalar Node.js usando el método oficial de NodeSource
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x $(lsb_release -cs) main" > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs
 
-# Agregar Node.js al PATH
-ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+# Verificar que Node.js y npm estén instalados correctamente
+RUN node --version && npm --version
 
-# Instalar herramientas de desarrollo
-RUN npm install -g \
-    yarn \
-    pnpm \
-    typescript \
-    ts-node \
-    @types/node \
-    nodemon \
-    pm2 \
-    express-generator \
-    create-react-app \
-    @angular/cli \
-    @vue/cli \
-    nestjs \
-    vite
+# Instalar herramientas globales de Node.js (separadas para mejor debugging)
+RUN npm install -g yarn
+RUN npm install -g typescript
+RUN npm install -g nodemon
+RUN npm install -g pm2
+RUN npm install -g create-react-app
+RUN npm install -g @angular/cli
+RUN npm install -g @vue/cli
 
-# Instalar VS Code extensions útiles
-RUN mkdir -p /tmp/extensions \
-    && cd /tmp/extensions \
-    && wget https://github.com/microsoft/vscode-node-debug2/releases/download/v1.43.0/node-debug2-1.43.0.vsix \
-    && code-server --install-extension ms-vscode.vscode-typescript-next \
-    && code-server --install-extension bradlc.vscode-tailwindcss \
-    && code-server --install-extension esbenp.prettier-vscode
+# Configurar git globalmente
+RUN git config --system init.defaultBranch main
 
-# Configurar Git
-RUN git config --system init.defaultBranch main \
-    && git config --system pull.rebase false
-
+# Volver al usuario original
 USER abc
 
-# Verificar instalaciones
+# Verificar instalaciones finales
 RUN node --version && npm --version && git --version
