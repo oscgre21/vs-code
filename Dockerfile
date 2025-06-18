@@ -1,20 +1,40 @@
-FROM lscr.io/linuxserver/code-server:latest
+# Usar imagen base con Node.js incluido
+FROM node:20-bullseye
 
-USER root
-
-# Instalar Node.js usando snap (más confiable)
+# Instalar dependencias para code-server
 RUN apt-get update && apt-get install -y \
     curl \
+    wget \
     git \
-    build-essential \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Verificar instalación
-RUN which node && which npm && node --version && npm --version
+# Crear usuario
+RUN useradd -m -u 1000 -G sudo abc \
+    && echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# Instalar solo las herramientas esenciales
-RUN npm install -g yarn typescript nodemon
+# Instalar code-server
+RUN curl -fsSL https://code-server.dev/install.sh | sh
 
+# Instalar herramientas Node.js
+RUN npm install -g \
+    yarn \
+    typescript \
+    nodemon \
+    pm2 \
+    create-react-app \
+    @angular/cli
+
+# Configurar usuario y directorios
 USER abc
+WORKDIR /home/abc
+
+# Crear directorios necesarios
+RUN mkdir -p /home/abc/.local/share/code-server \
+    && mkdir -p /home/abc/workspace
+
+# Exponer puerto
+EXPOSE 8443
+
+# Comando por defecto
+CMD ["code-server", "--bind-addr", "0.0.0.0:8443", "--auth", "password", "/home/abc/workspace"]
