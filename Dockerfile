@@ -25,12 +25,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 #     && tar -xJf node.tar.xz -C /usr/local --strip-components=1 \
 #     && rm node.tar.xz
 
-# Instalar Claude Code siguiendo la documentación oficial
+# NOTA: Claude Code está en research preview y no tiene instalador público disponible
+# Para instalarlo, sigue las instrucciones oficiales en:
 # https://docs.anthropic.com/en/docs/claude-code/setup
-RUN curl -fsSL https://storage.googleapis.com/claude-code/install.sh | bash
+# Una vez que esté disponible públicamente, se puede instalar con:
+# RUN curl -fsSL https://storage.googleapis.com/claude-code/install.sh | bash
 
-# Verificar que Node.js, npm, git y Claude Code estén instalados
-RUN node --version && npm --version && git --version && claude-code --version
+# Verificar que Node.js, npm y git estén instalados
+RUN node --version && npm --version && git --version
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g \
@@ -42,15 +44,11 @@ RUN npm install -g \
     @angular/cli \
     @vue/cli
 
-# Configurar git y Claude Code
+# Configurar git
 RUN git config --system init.defaultBranch main
 
-# Crear directorio para configuración de Claude Code
-RUN mkdir -p /home/abc/.config/claude-code
-
-# Nota: El usuario necesitará configurar su API key después del build
-# Pueden hacerlo ejecutando: claude-code auth login
-# O configurando la variable de entorno ANTHROPIC_API_KEY
+# Preparar directorio para futuras configuraciones de desarrollo
+RUN mkdir -p /home/abc/.config
 
 # Volver al usuario original (abc que ya existe)
 USER abc
