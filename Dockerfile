@@ -48,22 +48,19 @@ RUN npm install -g \
 RUN git config --system init.defaultBranch main
 
 # Crear script personalizado de inicio que maneja permisos
-RUN cat > /custom-init.sh << 'EOF'
-#!/bin/bash
-
-# Asegurar que los directorios existen con permisos correctos
-mkdir -p /config/.config
-mkdir -p /config/workspace
-mkdir -p /config/data
-mkdir -p /config/extensions
-
-# Cambiar ownership a abc:abc
-chown -R abc:abc /config
-chmod -R 755 /config
-
-# Ejecutar el init original
-exec /init "$@"
-EOF
+RUN echo '#!/bin/bash\n\
+# Asegurar que los directorios existen con permisos correctos\n\
+mkdir -p /config/.config\n\
+mkdir -p /config/workspace\n\
+mkdir -p /config/data\n\
+mkdir -p /config/extensions\n\
+\n\
+# Cambiar ownership a abc:abc\n\
+chown -R abc:abc /config\n\
+chmod -R 755 /config\n\
+\n\
+# Ejecutar el init original\n\
+exec /init "$@"' > /custom-init.sh
 
 # Hacer el script ejecutable
 RUN chmod +x /custom-init.sh
@@ -71,5 +68,9 @@ RUN chmod +x /custom-init.sh
 # Cambiar el ENTRYPOINT para usar nuestro script personalizado
 ENTRYPOINT ["/custom-init.sh"]
 
-# Volver al usuario original (abc que ya existe)
+# Volver al usuario original (abc que ya existe) pero crear los directorios primero
+RUN mkdir -p /config/.config /config/workspace /config/data /config/extensions \
+    && chown -R abc:abc /config \
+    && chmod -R 755 /config
+
 USER abc
