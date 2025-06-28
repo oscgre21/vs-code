@@ -35,5 +35,14 @@ RUN npm install -g \
 # Configurar git
 RUN git config --system init.defaultBranch main
 
+# Crear y configurar permisos para el directorio de configuración
+RUN mkdir -p /config/.config && \
+    chown -R abc:abc /config && \
+    chmod -R 755 /config
+
+# Asegurar que el usuario abc tenga permisos sobre su directorio home
+RUN chown -R abc:abc /home/abc && \
+    chmod -R 755 /home/abc
+
 # Volver al usuario original (abc que ya existe)
 USER abc
