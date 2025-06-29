@@ -7,6 +7,8 @@ ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
 ENV GIT_REPO_URL=""
+ENV GIT_USER_NAME=""
+ENV GIT_USER_EMAIL=""
 
 # Crear directorios necesarios
 RUN mkdir -p /config /config/workspace /custom-cont-init.d
@@ -55,6 +57,18 @@ RUN claude --version
 
 # Crear script de inicialización para clonar repositorio
 RUN echo '#!/bin/bash\n\
+# Configurar usuario Git global\n\
+if [ ! -z "$GIT_USER_NAME" ]; then\n\
+    git config --global user.name "$GIT_USER_NAME"\n\
+    echo "Configurado Git user.name: $GIT_USER_NAME"\n\
+fi\n\
+\n\
+if [ ! -z "$GIT_USER_EMAIL" ]; then\n\
+    git config --global user.email "$GIT_USER_EMAIL"\n\
+    echo "Configurado Git user.email: $GIT_USER_EMAIL"\n\
+fi\n\
+\n\
+# Clonar repositorio si se especifica\n\
 if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
     cd /config/workspace\n\
