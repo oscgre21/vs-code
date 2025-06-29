@@ -38,18 +38,11 @@ RUN npm install -g \
     @angular/cli \
     @vue/cli
 
-# Instalar Claude Code
-# Descargar e instalar Claude Code desde el repositorio oficial
-RUN curl -fsSL https://api.github.com/repos/anthropics/claude-code/releases/latest \
-    | grep "browser_download_url.*linux-x64" \
-    | cut -d '"' -f 4 \
-    | wget -qi - -O /tmp/claude-code.tar.gz \
-    && tar -xzf /tmp/claude-code.tar.gz -C /usr/local/bin/ \
-    && chmod +x /usr/local/bin/claude-code \
-    && rm /tmp/claude-code.tar.gz
+# Instalar Claude Code desde npm
+RUN npm install -g @anthropic-ai/claude-code
 
 # Verificar la instalación de Claude Code
-RUN claude-code --version
+RUN claude --version
 
 # Copiar archivos de configuración personalizada (opcional)
 # COPY custom-cont-init.d/ /custom-cont-init.d/
