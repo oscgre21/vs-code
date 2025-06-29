@@ -7,8 +7,8 @@ ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
 ENV GIT_REPO_URL=""
-ENV GIT_USER_NAME=""
-ENV GIT_USER_EMAIL=""
+ENV GIT_USER_NAME="Gregorio Ramos"
+ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 
 # Crear directorios necesarios y establecer permisos
 RUN mkdir -p /config /config/workspace /custom-cont-init.d \
@@ -72,6 +72,11 @@ else\n\
     echo "En el host ejecute: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"\n\
 fi\n\
 \n\
+# Configurar permisos ANTES de cualquier operación Git\n\
+echo "Configurando permisos del workspace..."\n\
+chown -R $PUID:$PGID /config/workspace\n\
+chmod -R 755 /config/workspace\n\
+\n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
     git config --global user.name "$GIT_USER_NAME"\n\
@@ -83,21 +88,32 @@ if [ ! -z "$GIT_USER_EMAIL" ]; then\n\
     echo "Configurado Git user.email: $GIT_USER_EMAIL"\n\
 fi\n\
 \n\
+# Configurar Git para ignorar cambios de permisos\n\
+git config --global core.filemode false\n\
+echo "Git configurado para ignorar cambios de permisos"\n\
+\n\
 # Clonar repositorio si se especifica\n\
 if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
     cd /config/workspace\n\
     git clone "$GIT_REPO_URL" .\n\
-    echo "Repositorio clonado exitosamente"\n\
+    # Configurar el repositorio clonado para ignorar cambios de permisos\n\
+    git config core.filemode false\n\
+    echo "Repositorio clonado exitosamente con configuración de permisos"\n\
 elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
+    cd /config/workspace\n\
+    git config core.filemode false\n\
+    echo "Configurado repositorio existente para ignorar cambios de permisos"\n\
 elif [ -z "$GIT_REPO_URL" ]; then\n\
     echo "No se especificó GIT_REPO_URL, omitiendo clonado"\n\
 fi\n\
 \n\
-# Corregir permisos del workspace\n\
-chown -R $PUID:$PGID /config/workspace\n\
-chmod -R 755 /config/workspace' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
+# Verificar y corregir permisos finales sin afectar Git\n\
+echo "Aplicando permisos finales..."\n\
+find /config/workspace -type d -exec chmod 755 {} \\;\n\
+find /config/workspace -type f -exec chmod 644 {} \\;\n\
+chown -R $PUID:$PGID /config/workspace' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
