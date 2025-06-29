@@ -25,8 +25,16 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Verificar que Node.js, npm y git estén instalados
-RUN node --version && npm --version && git --version
+# Instalar .NET Core 9.0
+RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update \
+    && apt-get install -y dotnet-sdk-9.0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verificar que Node.js, npm, git y .NET estén instalados
+RUN node --version && npm --version && git --version && dotnet --version
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g \
