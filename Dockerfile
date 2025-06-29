@@ -62,10 +62,15 @@ RUN claude --version
 
 # Crear script de inicialización para clonar repositorio
 RUN echo '#!/bin/bash\n\
-# Aumentar límite de file watchers\n\
-echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf\n\
-echo fs.inotify.max_user_instances=256 | tee -a /etc/sysctl.conf\n\
-sysctl -p\n\
+# Intentar aumentar límite de file watchers (requiere privilegios)\n\
+if [ -w /proc/sys/fs/inotify/max_user_watches ]; then\n\
+    echo 524288 > /proc/sys/fs/inotify/max_user_watches\n\
+    echo 256 > /proc/sys/fs/inotify/max_user_instances\n\
+    echo "File watchers configurados correctamente"\n\
+else\n\
+    echo "ADVERTENCIA: No se pueden configurar file watchers. Ejecute el contenedor con --privileged o configure el host"\n\
+    echo "En el host ejecute: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"\n\
+fi\n\
 \n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
