@@ -6,6 +6,7 @@ ENV PUID=1000
 ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
+ENV GIT_REPO_URL=""
 
 # Crear directorios necesarios
 RUN mkdir -p /config /config/workspace /custom-cont-init.d
@@ -51,6 +52,27 @@ RUN npm install -g @anthropic-ai/claude-code
 
 # Verificar la instalación de Claude Code
 RUN claude --version
+
+# Crear script de inicialización para clonar repositorio
+RUN echo '#!/bin/bash\n\
+if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
+    echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
+    cd /config/workspace\n\
+    git clone "$GIT_REPO_URL" .\n\
+    echo "Repositorio clonado exitosamente"\n\
+elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
+    echo "El directorio ya contiene un repositorio Git"\n\
+elif [ -z "$GIT_REPO_URL" ]; then\n\
+    echo "No se especificó GIT_REPO_URL, omitiendo clonado"\n\
+fi' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
+
+# Crear script de inicialización personalizado
+RUN echo '#!/bin/bash\n\
+# Ejecutar script de clonado\n\
+/usr/local/bin/clone-repo.sh\n\
+\n\
+# Continuar con la inicialización normal\n\
+exec "$@"' > /custom-cont-init.d/01-clone-repo && chmod +x /custom-cont-init.d/01-clone-repo
 
 # Copiar archivos de configuración personalizada (opcional)
 # COPY custom-cont-init.d/ /custom-cont-init.d/
