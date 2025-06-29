@@ -11,7 +11,7 @@ ENV GIT_USER_NAME="Gregorio Ramos"
 ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 
 # Crear directorios necesarios y establecer permisos
-RUN mkdir -p /config /config/workspace /custom-cont-init.d \
+RUN mkdir -p /config /config/workspace /config/.claude /config/.cache /custom-cont-init.d \
     && chown -R 1000:1000 /config
 
 # Instalar procps para sysctl y configurar file watchers
@@ -111,9 +111,17 @@ fi\n\
 \n\
 # Verificar y corregir permisos finales sin afectar Git\n\
 echo "Aplicando permisos finales..."\n\
+cd /config\n\
 find /config/workspace -type d -exec chmod 755 {} \\;\n\
 find /config/workspace -type f -exec chmod 644 {} \\;\n\
-chown -R $PUID:$PGID /config/workspace' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
+chown -R $PUID:$PGID /config/workspace\n\
+\n\
+# Configurar permisos para Claude\n\
+mkdir -p /config/.claude /config/.cache\n\
+chown -R $PUID:$PGID /config/.claude /config/.cache\n\
+chmod -R 755 /config/.claude /config/.cache\n\
+\n\
+echo "Inicialización completada correctamente"' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
