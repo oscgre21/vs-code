@@ -7,13 +7,14 @@ ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
 ENV GIT_REPO_URL=""
-ENV GIT_USER_NAME=""
-ENV GIT_USER_EMAIL=""
+ENV GIT_USER_NAME="Gregorio Ramos"
+ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 
 # Crear directorios necesarios y establecer permisos
 RUN mkdir -p /config /config/workspace /custom-cont-init.d \
     && chown -R 1000:1000 /config
 
+# Instalar procps para sysctl y configurar file watchers
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -22,7 +23,10 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     lsb-release \
-    && rm -rf /var/lib/apt/lists/*
+    procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo 'fs.inotify.max_user_watches=524288' >> /etc/sysctl.conf \
+    && echo 'fs.inotify.max_user_instances=256' >> /etc/sysctl.conf
 
 # Instalar Node.js siguiendo la guía oficial de nodejs.org
 # Usando el script de instalación oficial de NodeSource
@@ -58,6 +62,11 @@ RUN claude --version
 
 # Crear script de inicialización para clonar repositorio
 RUN echo '#!/bin/bash\n\
+# Aumentar límite de file watchers\n\
+echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf\n\
+echo fs.inotify.max_user_instances=256 | tee -a /etc/sysctl.conf\n\
+sysctl -p\n\
+\n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
     git config --global user.name "$GIT_USER_NAME"\n\
