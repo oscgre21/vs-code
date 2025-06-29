@@ -7,8 +7,8 @@ ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
 ENV GIT_REPO_URL=""
-ENV GIT_USER_NAME="Gregorio Ramos"
-ENV GIT_USER_EMAIL="oscgre21@gmail.com"
+ENV GIT_USER_NAME=""
+ENV GIT_USER_EMAIL=""
 
 # Crear directorios necesarios y establecer permisos
 RUN mkdir -p /config /config/workspace /custom-cont-init.d \
