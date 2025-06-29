@@ -10,8 +10,9 @@ ENV GIT_REPO_URL=""
 ENV GIT_USER_NAME=""
 ENV GIT_USER_EMAIL=""
 
-# Crear directorios necesarios
-RUN mkdir -p /config /config/workspace /custom-cont-init.d
+# Crear directorios necesarios y establecer permisos
+RUN mkdir -p /config /config/workspace /custom-cont-init.d \
+    && chown -R 1000:1000 /config
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -78,7 +79,11 @@ elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
 elif [ -z "$GIT_REPO_URL" ]; then\n\
     echo "No se especificó GIT_REPO_URL, omitiendo clonado"\n\
-fi' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
+fi\n\
+\n\
+# Corregir permisos del workspace\n\
+chown -R $PUID:$PGID /config/workspace\n\
+chmod -R 755 /config/workspace' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
