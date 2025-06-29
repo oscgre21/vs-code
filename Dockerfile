@@ -1,40 +1,25 @@
+# Usar la imagen base de LinuxServer code-server
 FROM lscr.io/linuxserver/code-server:latest
 
+# Establecer variables de entorno
+ENV PUID=1000
+ENV PGID=1000
+ENV TZ=Etc/UTC
+ENV PASSWORD=mi-password
 
-# Cambiar a root para instalar paquetes
-USER root
+# Crear directorios necesarios
+RUN mkdir -p /config /config/workspace /custom-cont-init.d
 
-# Actualizar sistema e instalar dependencias básicas
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    git \
-    build-essential \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    && rm -rf /var/lib/apt/lists/*
+# Copiar archivos de configuración personalizada (opcional)
+# COPY custom-cont-init.d/ /custom-cont-init.d/
 
-# Instalar Node.js siguiendo la guía oficial de nodejs.org
-# Usando el script de instalación oficial de NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs
+# Exponer los puertos
+EXPOSE 8443 8080
 
-# Verificar que Node.js, npm y git estén instalados
-RUN node --version && npm --version && git --version
+# Configurar el directorio de trabajo
+WORKDIR /config
 
-# Instalar herramientas globales de Node.js
-RUN npm install -g \
-    yarn \
-    typescript \
-    nodemon \
-    pm2 \
-    create-react-app \
-    @angular/cli \
-    @vue/cli
+# Configurar volúmenes
+VOLUME ["/config", "/config/workspace", "/custom-cont-init.d"]
 
-# Configurar git
-RUN git config --system init.defaultBranch main
-
-# Volver al usuario original (abc que ya existe)
-USER abc
+# El comando de inicio se hereda de la imagen base
