@@ -103,11 +103,6 @@ else\n\
     echo "echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"\n\
 fi\n\
 \n\
-# Configurar permisos del workspace\n\
-echo "Configurando permisos del workspace..."\n\
-chown -R $PUID:$PGID /config/workspace\n\
-chmod -R 755 /config/workspace\n\
-\n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
     git config --global user.name "$GIT_USER_NAME"\n\
@@ -122,6 +117,11 @@ fi\n\
 # Configurar Git para ignorar cambios de permisos\n\
 git config --global core.filemode false\n\
 echo "Git configurado para ignorar cambios de permisos"\n\
+\n\
+# Aplicar ownership y permisos al directorio workspace ANTES de clonar\n\
+echo "Configurando ownership y permisos del workspace antes de clonar..."\n\
+chown -R $PUID:$PGID /config/workspace\n\
+chmod -R 755 /config/workspace\n\
 \n\
 # Clonar repositorio si se especifica\n\
 if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
