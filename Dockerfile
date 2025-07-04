@@ -14,8 +14,10 @@ ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 RUN mkdir -p /config /config/workspace /config/.claude /config/.cache /custom-cont-init.d \
     && chown -R 1000:1000 /config
 
-# Instalar dependencias básicas
-RUN apt-get update && apt-get install -y \
+# Instalar dependencias del sistema - PASO A PASO para mejor debug
+RUN apt-get update
+
+RUN apt-get install -y \
     curl \
     wget \
     git \
@@ -23,63 +25,56 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     lsb-release \
-    procps \
-    software-properties-common \
+    procps
+
+RUN apt-get install -y \
+    python3 \
+    python3-dev \
+    python3-pip \
+    python3-setuptools
+
+RUN apt-get install -y \
     make \
     g++ \
     gcc \
     libc6-dev \
     libsqlite3-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+    pkg-config
+
+# Limpiar cache
+RUN rm -rf /var/lib/apt/lists/*
 
 # Configurar límites de file watchers
 RUN echo 'fs.inotify.max_user_watches=524288' >> /etc/sysctl.conf \
     && echo 'fs.inotify.max_user_instances=256' >> /etc/sysctl.conf
 
-# Intentar instalar Python 3.11, si no está disponible usar Python 3 del sistema
-RUN (add-apt-repository ppa:deadsnakes/ppa -y && \
-     apt-get update && \
-     apt-get install -y python3.11 python3.11-dev python3.11-distutils && \
-     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1) || \
-    (echo "Python 3.11 no disponible, usando Python 3 del sistema" && \
-     apt-get update && \
-     apt-get install -y python3 python3-dev python3-pip python3-setuptools && \
-     pip3 install --break-system-packages setuptools distutils-extra && \
-     ln -sf /usr/bin/python3 /usr/bin/python)
+# Instalar distutils para Python (necesario para node-gyp)
+RUN pip3 install --break-system-packages setuptools wheel
 
-# Limpiar cache de apt
+# Crear enlaces simbólicos para compatibilidad
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# Instalar Node.js LTS
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+RUN apt-get install -y nodejs
 RUN rm -rf /var/lib/apt/lists/*
 
-# Instalar Node.js siguiendo la guía oficial de nodejs.org
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs
-
-# Configurar npm para usar Python para compilaciones nativas
-RUN npm config set python /usr/bin/python
+# Configurar npm para usar Python 3 para compilaciones nativas
+RUN npm config set python /usr/bin/python3
 
 # Instalar .NET Core 9.0
-RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
-    && apt-get update \
-    && apt-get install -y dotnet-sdk-9.0 \
-    && rm -rf /var/lib/apt/lists/*
+RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+RUN dpkg -i packages-microsoft-prod.deb
+RUN rm packages-microsoft-prod.deb
+RUN apt-get update
+RUN apt-get install -y dotnet-sdk-9.0
+RUN rm -rf /var/lib/apt/lists/*
 
-# Verificar que Node.js, npm, git, Python y .NET estén instalados
+# Verificar que las herramientas estén instaladas
 RUN node --version && npm --version && git --version && python --version && dotnet --version
 
 # Instalar herramientas globales de Node.js
-RUN npm install -g \
-    yarn \
-    typescript \
-    nodemon \
-    pm2 \
-    create-react-app \
-    @angular/cli \
-    @vue/cli \
-    node-gyp
+RUN npm install -g yarn typescript nodemon pm2 create-react-app @angular/cli @vue/cli node-gyp
 
 # Instalar Claude Code desde npm
 RUN npm install -g @anthropic-ai/claude-code
@@ -89,25 +84,20 @@ RUN claude --version
 
 # Crear script de inicialización para clonar repositorio
 RUN echo '#!/bin/bash\n\
-# Intentar aumentar límite de file watchers (requiere privilegios)\n\
+# Intentar aumentar límite de file watchers\n\
 if [ -w /proc/sys/fs/inotify/max_user_watches ]; then\n\
     echo 524288 > /proc/sys/fs/inotify/max_user_watches\n\
     echo 256 > /proc/sys/fs/inotify/max_user_instances\n\
     echo "File watchers configurados correctamente"\n\
 else\n\
-    echo "ADVERTENCIA: No se pueden configurar file watchers. Ejecute el contenedor con --privileged o configure el host"\n\
-    echo "En el host ejecute: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"\n\
+    echo "ADVERTENCIA: No se pueden configurar file watchers. Configure el host:"\n\
+    echo "echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"\n\
 fi\n\
 \n\
-# Configurar permisos ANTES de cualquier operación Git\n\
+# Configurar permisos del workspace\n\
 echo "Configurando permisos del workspace..."\n\
 chown -R $PUID:$PGID /config/workspace\n\
 chmod -R 755 /config/workspace\n\
-\n\
-# Configurar variables de entorno para compilación nativa\n\
-export PYTHON=/usr/bin/python\n\
-export CXX=g++\n\
-export CC=gcc\n\
 \n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
@@ -129,51 +119,44 @@ if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
     cd /config/workspace\n\
     git clone "$GIT_REPO_URL" .\n\
-    # Configurar el repositorio clonado para ignorar cambios de permisos\n\
     git config core.filemode false\n\
-    echo "Repositorio clonado exitosamente con configuración de permisos"\n\
+    echo "Repositorio clonado exitosamente"\n\
 elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
     cd /config/workspace\n\
     git config core.filemode false\n\
-    echo "Configurado repositorio existente para ignorar cambios de permisos"\n\
-elif [ -z "$GIT_REPO_URL" ]; then\n\
-    echo "No se especificó GIT_REPO_URL, omitiendo clonado"\n\
 fi\n\
 \n\
-# Verificar y corregir permisos finales sin afectar Git\n\
+# Aplicar permisos finales\n\
 echo "Aplicando permisos finales..."\n\
-cd /config\n\
-find /config/workspace -type d -exec chmod 755 {} \\;\n\
-find /config/workspace -type f -exec chmod 644 {} \\;\n\
-chown -R $PUID:$PGID /config/workspace\n\
-\n\
-# Configurar permisos para Claude\n\
-mkdir -p /config/.claude /config/.cache\n\
-chown -R $PUID:$PGID /config/.claude /config/.cache\n\
+chown -R $PUID:$PGID /config/workspace /config/.claude /config/.cache\n\
 chmod -R 755 /config/.claude /config/.cache\n\
 \n\
-echo "Inicialización completada correctamente"' > /usr/local/bin/clone-repo.sh && chmod +x /usr/local/bin/clone-repo.sh
+echo "Inicialización completada"' > /usr/local/bin/clone-repo.sh
+
+RUN chmod +x /usr/local/bin/clone-repo.sh
 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
 # Configurar variables de entorno para compilación\n\
-export PYTHON=/usr/bin/python\n\
+export PYTHON=/usr/bin/python3\n\
 export CXX=g++\n\
 export CC=gcc\n\
-export npm_config_python=/usr/bin/python\n\
+export npm_config_python=/usr/bin/python3\n\
 \n\
 # Ejecutar script de clonado\n\
 /usr/local/bin/clone-repo.sh\n\
 \n\
 # Continuar con la inicialización normal\n\
-exec "$@"' > /custom-cont-init.d/01-clone-repo && chmod +x /custom-cont-init.d/01-clone-repo
+exec "$@"' > /custom-cont-init.d/01-clone-repo
+
+RUN chmod +x /custom-cont-init.d/01-clone-repo
 
 # Configurar variables de entorno permanentes para compilación
-ENV PYTHON=/usr/bin/python
+ENV PYTHON=/usr/bin/python3
 ENV CXX=g++
 ENV CC=gcc
-ENV npm_config_python=/usr/bin/python
+ENV npm_config_python=/usr/bin/python3
 
 # Exponer los puertos
 EXPOSE 8443 8080
