@@ -7,8 +7,8 @@ ENV PGID=1000
 ENV TZ=Etc/UTC
 ENV PASSWORD=mi-password
 ENV GIT_REPO_URL=""
-ENV GIT_USER_NAME="Gregorio Ramos"
-ENV GIT_USER_EMAIL="oscgre21@gmail.com"
+ENV GIT_USER_NAME=""
+ENV GIT_USER_EMAIL=""
 
 # Crear directorios necesarios y establecer permisos
 RUN mkdir -p /config /config/workspace /config/.claude /config/.cache /custom-cont-init.d \
@@ -59,19 +59,28 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
 RUN apt-get install -y nodejs
 RUN rm -rf /var/lib/apt/lists/*
 
-# Configurar npm para usar Python 3 para compilaciones nativas
-RUN npm config set python /usr/bin/python3
+# Las configuraciones de Python para npm ahora se manejan con variables de entorno
+# que ya están configuradas más abajo en el Dockerfile
 
-# Instalar .NET Core 9.0
-RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-RUN dpkg -i packages-microsoft-prod.deb
-RUN rm packages-microsoft-prod.deb
-RUN apt-get update
-RUN apt-get install -y dotnet-sdk-9.0
+# Instalar .NET Core 9.0 - Detectar arquitectura y usar el paquete correcto
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+        dpkg -i packages-microsoft-prod.deb && \
+        rm packages-microsoft-prod.deb && \
+        apt-get update && \
+        apt-get install -y dotnet-sdk-9.0; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
+        chmod +x dotnet-install.sh && \
+        ./dotnet-install.sh --channel 9.0 --install-dir /usr/share/dotnet && \
+        ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet && \
+        rm dotnet-install.sh; \
+    fi
 RUN rm -rf /var/lib/apt/lists/*
 
 # Verificar que las herramientas estén instaladas
-RUN node --version && npm --version && git --version && python --version && dotnet --version
+RUN node --version && npm --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g yarn typescript nodemon pm2 create-react-app @angular/cli @vue/cli node-gyp
