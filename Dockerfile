@@ -127,21 +127,30 @@ chmod -R 755 /config/workspace\n\
 if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
     cd /config/workspace\n\
-    # Configurar umask para permisos correctos y clonar con filemode deshabilitado\n\
-    umask 022\n\
-    git -c core.filemode=false clone "$GIT_REPO_URL" .\n\
+    git clone "$GIT_REPO_URL" .\n\
+    # Configurar el repositorio clonado para ignorar cambios de permisos\n\
     git config core.filemode false\n\
-    echo "Repositorio clonado exitosamente"\n\
+    echo "Repositorio clonado exitosamente con configuración de permisos"\n\
 elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
     cd /config/workspace\n\
     git config core.filemode false\n\
+    echo "Configurado repositorio existente para ignorar cambios de permisos"\n\
+elif [ -z "$GIT_REPO_URL" ]; then\n\
+    echo "No se especificó GIT_REPO_URL, omitiendo clonado"\n\
 fi\n\
 \n\
-# Aplicar permisos finales a directorios de configuración\n\
-echo "Aplicando permisos finales a directorios de configuración..."\n\
-chown -R $PUID:$PGID /config/.claude /config/.cache 2>/dev/null || true\n\
-chmod -R 755 /config/.claude /config/.cache 2>/dev/null || true\n\
+# Verificar y corregir permisos finales sin afectar Git\n\
+echo "Aplicando permisos finales..."\n\
+cd /config\n\
+find /config/workspace -type d -exec chmod 755 {} \\;\n\
+find /config/workspace -type f -exec chmod 644 {} \\;\n\
+chown -R $PUID:$PGID /config/workspace\n\
+\n\
+# Configurar permisos para Claude\n\
+mkdir -p /config/.claude /config/.cache\n\
+chown -R $PUID:$PGID /config/.claude /config/.cache\n\
+chmod -R 755 /config/.claude /config/.cache\n\
 \n\
 echo "Inicialización completada"' > /usr/local/bin/clone-repo.sh
 
