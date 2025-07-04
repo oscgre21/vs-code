@@ -14,7 +14,7 @@ ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 RUN mkdir -p /config /config/workspace /config/.claude /config/.cache /custom-cont-init.d \
     && chown -R 1000:1000 /config
 
-# Instalar procps para sysctl y configurar file watchers
+# Instalar dependencias del sistema incluyendo herramientas de compilación y Python 3.11
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -24,14 +24,31 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     procps \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
+    python3-pip \
+    make \
+    g++ \
+    gcc \
+    libc6-dev \
+    libsqlite3-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && echo 'fs.inotify.max_user_watches=524288' >> /etc/sysctl.conf \
     && echo 'fs.inotify.max_user_instances=256' >> /etc/sysctl.conf
+
+# Configurar Python 3.11 como versión por defecto para node-gyp
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 # Instalar Node.js siguiendo la guía oficial de nodejs.org
 # Usando el script de instalación oficial de NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
+
+# Configurar npm para usar Python 3.11 para compilaciones nativas
+RUN npm config set python /usr/bin/python3.11
 
 # Instalar .NET Core 9.0
 RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
@@ -41,8 +58,8 @@ RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-p
     && apt-get install -y dotnet-sdk-9.0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Verificar que Node.js, npm, git y .NET estén instalados
-RUN node --version && npm --version && git --version && dotnet --version
+# Verificar que Node.js, npm, git, Python y .NET estén instalados
+RUN node --version && npm --version && git --version && python --version && dotnet --version
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g \
@@ -52,7 +69,8 @@ RUN npm install -g \
     pm2 \
     create-react-app \
     @angular/cli \
-    @vue/cli
+    @vue/cli \
+    node-gyp
 
 # Instalar Claude Code desde npm
 RUN npm install -g @anthropic-ai/claude-code
@@ -76,6 +94,11 @@ fi\n\
 echo "Configurando permisos del workspace..."\n\
 chown -R $PUID:$PGID /config/workspace\n\
 chmod -R 755 /config/workspace\n\
+\n\
+# Configurar variables de entorno para compilación nativa\n\
+export PYTHON=/usr/bin/python3.11\n\
+export CXX=g++\n\
+export CC=gcc\n\
 \n\
 # Configurar usuario Git global\n\
 if [ ! -z "$GIT_USER_NAME" ]; then\n\
@@ -125,14 +148,23 @@ echo "Inicialización completada correctamente"' > /usr/local/bin/clone-repo.sh 
 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
+# Configurar variables de entorno para compilación\n\
+export PYTHON=/usr/bin/python3.11\n\
+export CXX=g++\n\
+export CC=gcc\n\
+export npm_config_python=/usr/bin/python3.11\n\
+\n\
 # Ejecutar script de clonado\n\
 /usr/local/bin/clone-repo.sh\n\
 \n\
 # Continuar con la inicialización normal\n\
 exec "$@"' > /custom-cont-init.d/01-clone-repo && chmod +x /custom-cont-init.d/01-clone-repo
 
-# Copiar archivos de configuración personalizada (opcional)
-# COPY custom-cont-init.d/ /custom-cont-init.d/
+# Configurar variables de entorno permanentes para compilación
+ENV PYTHON=/usr/bin/python3.11
+ENV CXX=g++
+ENV CC=gcc
+ENV npm_config_python=/usr/bin/python3.11
 
 # Exponer los puertos
 EXPOSE 8443 8080
