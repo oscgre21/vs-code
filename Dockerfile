@@ -127,24 +127,14 @@ chmod -R 755 /config/workspace\n\
 if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     echo "Clonando repositorio desde: $GIT_REPO_URL"\n\
     cd /config/workspace\n\
-    git clone "$GIT_REPO_URL" .\n\
+    # Configurar umask para permisos correctos y clonar con filemode deshabilitado\n\
+    umask 022\n\
+    git -c core.filemode=false clone "$GIT_REPO_URL" .\n\
     git config core.filemode false\n\
     echo "Repositorio clonado exitosamente"\n\
-    # Aplicar permisos después del clone para permitir escritura\n\
-    echo "Aplicando permisos de escritura después del clone..."\n\
-    chown -R $PUID:$PGID /config/workspace\n\
-    chmod -R 755 /config/workspace\n\
-    # Asegurar que git ignore estos cambios de permisos\n\
-    git config core.filemode false\n\
-    git config --global core.filemode false\n\
 elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
     cd /config/workspace\n\
-    git config core.filemode false\n\
-    # Aplicar permisos al repositorio existente\n\
-    echo "Aplicando permisos de escritura al repositorio existente..."\n\
-    chown -R $PUID:$PGID /config/workspace\n\
-    chmod -R 755 /config/workspace\n\
     git config core.filemode false\n\
 fi\n\
 \n\
