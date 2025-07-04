@@ -14,7 +14,7 @@ ENV GIT_USER_EMAIL="oscgre21@gmail.com"
 RUN mkdir -p /config /config/workspace /config/.claude /config/.cache /custom-cont-init.d \
     && chown -R 1000:1000 /config
 
-# Instalar dependencias del sistema incluyendo herramientas de compilación y Python 3.11
+# Instalar dependencias básicas
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -24,31 +24,40 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     procps \
-    python3.11 \
-    python3.11-dev \
-    python3.11-distutils \
-    python3-pip \
+    software-properties-common \
     make \
     g++ \
     gcc \
     libc6-dev \
     libsqlite3-dev \
     pkg-config \
-    && rm -rf /var/lib/apt/lists/* \
-    && echo 'fs.inotify.max_user_watches=524288' >> /etc/sysctl.conf \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configurar límites de file watchers
+RUN echo 'fs.inotify.max_user_watches=524288' >> /etc/sysctl.conf \
     && echo 'fs.inotify.max_user_instances=256' >> /etc/sysctl.conf
 
-# Configurar Python 3.11 como versión por defecto para node-gyp
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+# Intentar instalar Python 3.11, si no está disponible usar Python 3 del sistema
+RUN (add-apt-repository ppa:deadsnakes/ppa -y && \
+     apt-get update && \
+     apt-get install -y python3.11 python3.11-dev python3.11-distutils && \
+     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1) || \
+    (echo "Python 3.11 no disponible, usando Python 3 del sistema" && \
+     apt-get update && \
+     apt-get install -y python3 python3-dev python3-pip python3-setuptools && \
+     pip3 install --break-system-packages setuptools distutils-extra && \
+     ln -sf /usr/bin/python3 /usr/bin/python)
+
+# Limpiar cache de apt
+RUN rm -rf /var/lib/apt/lists/*
 
 # Instalar Node.js siguiendo la guía oficial de nodejs.org
-# Usando el script de instalación oficial de NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Configurar npm para usar Python 3.11 para compilaciones nativas
-RUN npm config set python /usr/bin/python3.11
+# Configurar npm para usar Python para compilaciones nativas
+RUN npm config set python /usr/bin/python
 
 # Instalar .NET Core 9.0
 RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
@@ -96,7 +105,7 @@ chown -R $PUID:$PGID /config/workspace\n\
 chmod -R 755 /config/workspace\n\
 \n\
 # Configurar variables de entorno para compilación nativa\n\
-export PYTHON=/usr/bin/python3.11\n\
+export PYTHON=/usr/bin/python\n\
 export CXX=g++\n\
 export CC=gcc\n\
 \n\
@@ -149,10 +158,10 @@ echo "Inicialización completada correctamente"' > /usr/local/bin/clone-repo.sh 
 # Crear script de inicialización personalizado
 RUN echo '#!/bin/bash\n\
 # Configurar variables de entorno para compilación\n\
-export PYTHON=/usr/bin/python3.11\n\
+export PYTHON=/usr/bin/python\n\
 export CXX=g++\n\
 export CC=gcc\n\
-export npm_config_python=/usr/bin/python3.11\n\
+export npm_config_python=/usr/bin/python\n\
 \n\
 # Ejecutar script de clonado\n\
 /usr/local/bin/clone-repo.sh\n\
@@ -161,10 +170,10 @@ export npm_config_python=/usr/bin/python3.11\n\
 exec "$@"' > /custom-cont-init.d/01-clone-repo && chmod +x /custom-cont-init.d/01-clone-repo
 
 # Configurar variables de entorno permanentes para compilación
-ENV PYTHON=/usr/bin/python3.11
+ENV PYTHON=/usr/bin/python
 ENV CXX=g++
 ENV CC=gcc
-ENV npm_config_python=/usr/bin/python3.11
+ENV npm_config_python=/usr/bin/python
 
 # Exponer los puertos
 EXPOSE 8443 8080
