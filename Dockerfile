@@ -130,20 +130,10 @@ if [ ! -z "$GIT_REPO_URL" ] && [ ! -d "/config/workspace/.git" ]; then\n\
     git clone "$GIT_REPO_URL" .\n\
     git config core.filemode false\n\
     echo "Repositorio clonado exitosamente"\n\
-    # Aplicar permisos inmediatamente después de clonar\n\
-    echo "Aplicando permisos al repositorio clonado..."\n\
-    chown -R $PUID:$PGID /config/workspace\n\
-    chmod -R 755 /config/workspace\n\
-    # Configurar git para ignorar cambios de permisos en el repositorio\n\
-    git config core.filemode false\n\
 elif [ ! -z "$GIT_REPO_URL" ] && [ -d "/config/workspace/.git" ]; then\n\
     echo "El directorio ya contiene un repositorio Git"\n\
     cd /config/workspace\n\
     git config core.filemode false\n\
-    # Aplicar permisos al repositorio existente\n\
-    echo "Aplicando permisos al repositorio existente..."\n\
-    chown -R $PUID:$PGID /config/workspace\n\
-    chmod -R 755 /config/workspace\n\
 fi\n\
 \n\
 # Aplicar permisos finales a directorios de configuración\n\
