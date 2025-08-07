@@ -61,12 +61,11 @@ RUN apt-get install -y nodejs
 RUN rm -rf /var/lib/apt/lists/*
 
 # Instalar Bun - JavaScript runtime y package manager
-RUN curl -fsSL https://bun.com/install | bash
+RUN curl -fsSL https://bun.com/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
 # Agregar Bun al PATH para todos los usuarios
 ENV PATH="/root/.bun/bin:$PATH"
-# Crear enlace simbólico para acceso global
-RUN ln -s /root/.bun/bin/bun /usr/local/bin/bun
-RUN ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
 
 # Las configuraciones de Python para npm ahora se manejan con variables de entorno
 # que ya están configuradas más abajo en el Dockerfile
@@ -89,7 +88,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 RUN rm -rf /var/lib/apt/lists/*
 
 # Verificar que las herramientas estén instaladas
-RUN node --version && npm --version && bun --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
+RUN node --version && npm --version && /usr/local/bin/bun --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g yarn typescript nodemon pm2 create-react-app @angular/cli @vue/cli node-gyp
