@@ -62,8 +62,10 @@ RUN rm -rf /var/lib/apt/lists/*
 
 # Instalar Bun - JavaScript runtime y package manager
 RUN curl -fsSL https://bun.com/install | bash && \
+    /root/.bun/bin/bun --version && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
-    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx && \
+    /usr/local/bin/bun --version
 # Agregar Bun al PATH para todos los usuarios
 ENV PATH="/root/.bun/bin:$PATH"
 
@@ -87,8 +89,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
     fi
 RUN rm -rf /var/lib/apt/lists/*
 
-# Verificar que las herramientas estén instaladas
-RUN node --version && npm --version && /usr/local/bin/bun --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
+# Verificar que las herramientas estén instaladas (Bun ya verificado arriba)
+RUN node --version && npm --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g yarn typescript nodemon pm2 create-react-app @angular/cli @vue/cli node-gyp
