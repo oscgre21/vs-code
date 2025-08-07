@@ -61,13 +61,24 @@ RUN apt-get install -y nodejs
 RUN rm -rf /var/lib/apt/lists/*
 
 # Instalar Bun - JavaScript runtime y package manager
-RUN curl -fsSL https://bun.com/install | bash && \
-    /root/.bun/bin/bun --version && \
-    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
-    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx && \
-    /usr/local/bin/bun --version
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        BUN_ARCH="linux-x64"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        BUN_ARCH="linux-aarch64"; \
+    else \
+        echo "Arquitectura no soportada: $ARCH" && exit 1; \
+    fi && \
+    BUN_VERSION=$(curl -s https://api.github.com/repos/oven-sh/bun/releases/latest | grep '"tag_name":' | cut -d'"' -f4) && \
+    echo "Descargando Bun $BUN_VERSION para $BUN_ARCH" && \
+    curl -fsSL "https://github.com/oven-sh/bun/releases/download/$BUN_VERSION/bun-$BUN_ARCH.zip" -o bun.zip && \
+    unzip bun.zip && \
+    mv bun-$BUN_ARCH/bun /usr/local/bin/bun && \
+    chmod +x /usr/local/bin/bun && \
+    rm -rf bun.zip bun-$BUN_ARCH && \
+    bun --version
 # Agregar Bun al PATH para todos los usuarios
-ENV PATH="/root/.bun/bin:$PATH"
+ENV PATH="/usr/local/bin:$PATH"
 
 # Las configuraciones de Python para npm ahora se manejan con variables de entorno
 # que ya están configuradas más abajo en el Dockerfile
@@ -89,8 +100,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
     fi
 RUN rm -rf /var/lib/apt/lists/*
 
-# Verificar que las herramientas estén instaladas (Bun ya verificado arriba)
-RUN node --version && npm --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
+# Verificar que las herramientas estén instaladas
+RUN node --version && npm --version && bun --version && git --version && python --version && (dotnet --version || echo ".NET Core no instalado")
 
 # Instalar herramientas globales de Node.js
 RUN npm install -g yarn typescript nodemon pm2 create-react-app @angular/cli @vue/cli node-gyp
@@ -174,8 +185,8 @@ export CXX=g++\n\
 export CC=gcc\n\
 export npm_config_python=/usr/bin/python3\n\
 \n\
-# Asegurar que Bun esté en el PATH\n\
-export PATH="/root/.bun/bin:$PATH"\n\
+# Asegurar que Bun esté en el PATH
+export PATH="/usr/local/bin:$PATH"\n\
 \n\
 # Ejecutar script de clonado\n\
 /usr/local/bin/clone-repo.sh\n\
